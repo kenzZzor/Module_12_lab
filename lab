@@ -1,0 +1,151 @@
+using System;
+using System.Collections.Generic;
+
+namespace HotelBookingSystem
+{
+    public interface IBookingState
+    {
+        void SelectRoom();
+        void ChangeRoom();
+        void ConfirmBooking();
+        void Pay();
+        void CancelBooking();
+    }
+
+    public class BookingContext
+    {
+        public IBookingState State { get; set; }
+        public BookingHistory History { get; } = new BookingHistory();
+
+        public BookingContext()
+        {
+            State = new IdleState(this);
+        }
+    }
+
+    public class BookingHistory
+    {
+        private readonly List<string> _history = new List<string>();
+
+        public void AddRecord(string record)
+        {
+            _history.Add(record);
+            Console.WriteLine($"[History] {record}");
+        }
+
+        public void ShowHistory()
+        {
+            Console.WriteLine("Booking History:");
+            foreach (var record in _history)
+            {
+                Console.WriteLine(record);
+            }
+        }
+    }
+
+    public class IdleState : IBookingState
+    {
+        private readonly BookingContext _context;
+        public IdleState(BookingContext context) => _context = context;
+
+        public void SelectRoom()
+        {
+            Console.WriteLine("Room selected.");
+            _context.History.AddRecord("Room selected.");
+            _context.State = new RoomSelectedState(_context);
+        }
+
+        public void ChangeRoom() => Console.WriteLine("No room selected to change.");
+        public void ConfirmBooking() => Console.WriteLine("No room selected to confirm.");
+        public void Pay() => Console.WriteLine("Cannot pay without booking confirmation.");
+        public void CancelBooking() => Console.WriteLine("Nothing to cancel.");
+    }
+
+    public class RoomSelectedState : IBookingState
+    {
+        private readonly BookingContext _context;
+        public RoomSelectedState(BookingContext context) => _context = context;
+
+        public void SelectRoom() => Console.WriteLine("Room already selected.");
+        
+        public void ChangeRoom()
+        {
+            Console.WriteLine("Room changed.");
+            _context.History.AddRecord("Room changed.");
+        }
+
+        public void ConfirmBooking()
+        {
+            Console.WriteLine("Booking confirmed.");
+            _context.History.AddRecord("Booking confirmed.");
+            _context.State = new BookingConfirmedState(_context);
+        }
+
+        public void Pay() => Console.WriteLine("Cannot pay without confirming booking.");
+        
+        public void CancelBooking()
+        {
+            Console.WriteLine("Booking cancelled.");
+            _context.History.AddRecord("Booking cancelled.");
+            _context.State = new IdleState(_context);
+        }
+    }
+
+    public class BookingConfirmedState : IBookingState
+    {
+        private readonly BookingContext _context;
+        public BookingConfirmedState(BookingContext context) => _context = context;
+
+        public void SelectRoom() => Console.WriteLine("Cannot select a new room after confirming.");
+        public void ChangeRoom() => Console.WriteLine("Cannot change room after confirming.");
+
+        public void ConfirmBooking() => Console.WriteLine("Booking already confirmed.");
+        
+        public void Pay()
+        {
+            decimal originalPrice = 100;
+            decimal discount = 0.1m;
+            decimal finalPrice = originalPrice * (1 - discount);
+
+            Console.WriteLine($"Payment successful. Final price: {finalPrice:C}.");
+            _context.History.AddRecord($"Payment made. Final price: {finalPrice:C}.");
+            _context.State = new PaidState(_context);
+        }
+
+        public void CancelBooking()
+        {
+            Console.WriteLine("Booking cancelled.");
+            _context.History.AddRecord("Booking cancelled.");
+            _context.State = new IdleState(_context);
+        }
+    }
+
+    public class PaidState : IBookingState
+    {
+        private readonly BookingContext _context;
+        public PaidState(BookingContext context) => _context = context;
+
+        public void SelectRoom() => Console.WriteLine("Cannot select a room after payment.");
+        public void ChangeRoom() => Console.WriteLine("Cannot change room after payment.");
+        public void ConfirmBooking() => Console.WriteLine("Booking already confirmed.");
+        public void Pay() => Console.WriteLine("Booking already paid.");
+        public void CancelBooking() => Console.WriteLine("Cannot cancel after payment.");
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var booking = new BookingContext();
+
+            booking.State.SelectRoom();
+            booking.State.ChangeRoom();
+            booking.State.ConfirmBooking();
+            booking.State.Pay();
+            booking.State.CancelBooking();
+
+            Console.WriteLine("\nFinal Booking History:");
+            booking.History.ShowHistory();
+        }
+    }
+}
